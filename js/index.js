@@ -1,11 +1,19 @@
 ymaps.ready(init);
 
-function init(){ 
-    // Создание карты.    
+function init(){
     let myMap = new ymaps.Map("map", {
         center: [56.8375,60.5985],
         zoom: 13,
         controls: ['zoomControl']
+    });
+    let clusterer = new ymaps.Clusterer({
+        gridSize: 128,
+        clusterDisableClickZoom: true,
+        clusterHideIconOnBalloonOpen: true,
+        clusterBalloonContentLayout: "cluster#balloonCarousel",
+        clusterBalloonCycling: false,
+        clusterOpenBalloonOnClick: true,
+        clusterBalloonPanelMaxMapArea: 0
     });
 
     myMap.events.add('click', (e) => {  
@@ -17,7 +25,7 @@ function init(){
             myMap.balloon.open(coords,{
                 coords: coords,                    
                 address: address,                   
-                content: ''
+                comment: ''
             },{
                 layout: BalloonLayout,              
                 contentLayout: BalloonContentLayout 
@@ -36,7 +44,7 @@ function init(){
                 </button>
             </div>
             <div class="card-body">
-                <ul id="referenceList" class="panel-references">                    
+                <ul id="listComment" class="panel-references">                    
                 </ul>
                 <hr class="divider"></hr>
                 <div class="form">
@@ -55,19 +63,62 @@ function init(){
                     </form>
                 </div>
             </div>
-        </div>`,{
-            closeButton: document.querySelector('#closeButton'),
-            addButton: document.querySelector('#addButton'),
+        </div>`,
+        {
             build(){
                 this.constructor.superclass.build.call(this);
-                console.log('build');
+                // console.log('build');
+                let closeButton = document.querySelector('#closeButton'),
+                addButton = document.querySelector('#addButton');
+                addButton.addEventListener('click', this.createModelPoint.bind(this));
+                closeButton.addEventListener('click',this.closeBalloon.bind(this));
             },
             clear(){
                 this.constructor.superclass.clear.call(this);
+                // console.log('clear');
+                // let closeButton = document.querySelector('#closeButton'),
+                // addButton = document.querySelector('#addButton');
+                // addButton.removeListener('click', this.createModelPoint);
+                // closeButton.removeListener('click', this.closeBalloon);
             },
             getShape() {
                 return new ymaps.shape.Rectangle(new ymaps.geometry.pixel.Rectangle([ [0, 0], [380, 530] ]));
             },
+            createModelPoint(e) {
+                e.preventDefault();
+                const name = document.querySelector('#inputName'),
+                    place = document.querySelector('#inputPlace'),
+                    comment = document.querySelector('#controlComment'),
+                    listComment = document.querySelector('#listComment');
+                console.log(this.getData())
+                if(name.value !== '' && place.value !== '' && comment.value !== '') {
+                    let placemark = {
+                        name: name.value,
+                        place: place.value,
+                        comment: comment.value,
+                        address: this.getData().address,
+                        coords: this.getData().coords
+                    }
+
+                    myPlacemark = this.addPointOnMap.call(this, placemark);
+                    clusterer.add(myPlacemark);
+                    myMap.geoObjects.add(clusterer);
+                }
+
+            },
+            closeBalloon(e) {
+                this.events.fire('userclose');
+            },
+            addPointOnMap(placemark) {
+                return new ymaps.Placemark(placemark.coords, {
+                    placemarkData: placemark
+                }, { 
+                    balloonLayout: BalloonLayout,
+                    balloonContentLayout: BalloonContentLayout,
+                    balloonPanelMaxMapArea: 0 
+                });
+            }
+            
         }
     ),
     BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
