@@ -32,9 +32,11 @@ function init(){
             });
         });
     });
+
+    let placemarks = []; 
     
     let BalloonLayout = ymaps.templateLayoutFactory.createClass(
-        `<div id="pop-up" class="card container" style="width: 379px;">
+        `<div id="pop-up" class="card container" style="width: 379px; max-height: 527px">
             <div class="card-header row">
                 <h5 class="card-title col-11">
                     {{properties.placemarkData.address|default: address}}
@@ -44,7 +46,8 @@ function init(){
                 </button>
             </div>
             <div class="card-body">
-                <ul id="listComment" class="panel-references">                    
+                <ul id="listComment" style="max-height: 100px; overflow: auto;">
+                    {% include options.contentLayout %}
                 </ul>
                 <hr class="divider"></hr>
                 <div class="form">
@@ -67,22 +70,30 @@ function init(){
         {
             build(){
                 this.constructor.superclass.build.call(this);
-                // console.log('build');
+                console.log('build');
                 let closeButton = document.querySelector('#closeButton'),
-                addButton = document.querySelector('#addButton');
+                addButton = document.querySelector('#addButton'),
+                listComment = document.querySelector('#listComment');
+
                 addButton.addEventListener('click', this.createModelPoint.bind(this));
                 closeButton.addEventListener('click',this.closeBalloon.bind(this));
+                //console.log(this.getData());
+                // this.createCommentList.call(this)
+
             },
             clear(){
                 this.constructor.superclass.clear.call(this);
                 // console.log('clear');
                 // let closeButton = document.querySelector('#closeButton'),
                 // addButton = document.querySelector('#addButton');
-                // addButton.removeListener('click', this.createModelPoint);
-                // closeButton.removeListener('click', this.closeBalloon);
+                // addButton.removeEventListener('click', this.createModelPoint);
+                // closeButton.removeEventListener('click', this.closeBalloon);
+            },
+            closeBalloon(e) {
+                this.events.fire('userclose');
             },
             getShape() {
-                return new ymaps.shape.Rectangle(new ymaps.geometry.pixel.Rectangle([ [0, 0], [380, 530] ]));
+                return new ymaps.shape.Rectangle(new ymaps.geometry.pixel.Rectangle([[0, 0], [380, 530]]));
             },
             createModelPoint(e) {
                 e.preventDefault();
@@ -90,25 +101,44 @@ function init(){
                     place = document.querySelector('#inputPlace'),
                     comment = document.querySelector('#controlComment'),
                     listComment = document.querySelector('#listComment');
-                console.log(this.getData())
-                if(name.value !== '' && place.value !== '' && comment.value !== '') {
-                    let placemark = {
+                
+                if(name.value && place.value && comment.value) {
+
+                    let li = document.createElement('li');
+                    listComment.firstChild === null ? listComment.append(li) : listComment.insertBefore(li, listComment.firstElementChild);
+                    li.innerHTML = `
+                    <span class="name">${name.value},</span>
+                    <span class="place">${place.value},</span>
+                    <div class="comment-text">${comment.value}</div>
+                    `;
+
+                    placemarks.push ({
                         name: name.value,
                         place: place.value,
                         comment: comment.value,
-                        address: this.getData().address,
-                        coords: this.getData().coords
-                    }
-
-                    myPlacemark = this.addPointOnMap.call(this, placemark);
+                        address: this.getData().properties? this.getData().properties.getAll().placemarkData.address : this.getData().address,
+                        coords: this.getData().properties ? this.getData().properties.getAll().placemarkData.coords : this.getData().coords
+                    });
+                    let myPlacemark = this.addPointOnMap.call(this, placemarks[placemarks.length - 1]);
+                    // console.log(myPlacemark);
                     clusterer.add(myPlacemark);
                     myMap.geoObjects.add(clusterer);
+                    name.value = place.value = comment.value = '';
                 }
 
             },
-            closeBalloon(e) {
-                this.events.fire('userclose');
-            },
+            // createCommentList() {
+            //     const listComment = document.querySelector('#listComment');
+            //     // console.log('createCommentList', this.getData());
+            //     if (placemarks.length !== 0) {
+            //         for (let point in placemarks) {
+            //             if (placemarks[point].address === this.getData().properties.getAll().placemarkData.address) {
+            //                 console.log('Point',point);
+            //             }
+            //         }
+            //     }
+                
+            // },
             addPointOnMap(placemark) {
                 return new ymaps.Placemark(placemark.coords, {
                     placemarkData: placemark
@@ -122,7 +152,15 @@ function init(){
         }
     ),
     BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
-     
-    )
-    
+        `{% if properties.placemarkData %}
+            <li class="comment-item">
+                <span class="name">{{properties.placemarkData.name}},</span>
+                <span class="place">{{properties.placemarkData.place}},</span>
+                <div class="comment-text">{{properties.placemarkData.comment}}</div>
+            </li>
+        {% endif %}
+        {% if content %}
+            {{content|raw}}
+        {% endif %}`
+    ) 
 }
