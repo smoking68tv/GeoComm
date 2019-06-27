@@ -1,3 +1,4 @@
+commentHbs = require('../hbs/comment.hbs');
 ymaps.ready(init);
 
 function init(){
@@ -6,30 +7,20 @@ function init(){
         zoom: 13,
         controls: ['zoomControl']
     });
-    let clusterer = new ymaps.Clusterer({
-        gridSize: 128,
-        clusterDisableClickZoom: true,
-        clusterHideIconOnBalloonOpen: true,
-        clusterBalloonContentLayout: "cluster#balloonCarousel",
-        clusterBalloonCycling: false,
-        clusterOpenBalloonOnClick: true,
-        clusterBalloonPanelMaxMapArea: 0
-    });
-
     myMap.events.add('click', (e) => {  
         const coords = e.get('coords');
         
         ymaps.geocode(coords).then((res) => {
             let address = res.geoObjects.get(0).properties.get('text');
-            console.log(coords)
             myMap.balloon.open(coords,{
-                coords: coords,                    
-                address: address,                   
-                comment: ''
+                coords,                    
+                address,                   
+                comment: 'Отзывов нет'
             },{
                 layout: BalloonLayout,              
                 contentLayout: BalloonContentLayout 
             });
+            console.log(myMap.balloon.getOptions())
         });
     });
 
@@ -70,20 +61,15 @@ function init(){
         {
             build(){
                 this.constructor.superclass.build.call(this);
-                console.log('build');
+
                 let closeButton = document.querySelector('#closeButton'),
-                addButton = document.querySelector('#addButton'),
-                listComment = document.querySelector('#listComment');
+                addButton = document.querySelector('#addButton');
 
                 addButton.addEventListener('click', this.createModelPoint.bind(this));
                 closeButton.addEventListener('click',this.closeBalloon.bind(this));
-                //console.log(this.getData());
-                // this.createCommentList.call(this)
-
             },
             clear(){
                 this.constructor.superclass.clear.call(this);
-                // console.log('clear');
                 // let closeButton = document.querySelector('#closeButton'),
                 // addButton = document.querySelector('#addButton');
                 // addButton.removeEventListener('click', this.createModelPoint);
@@ -97,58 +83,44 @@ function init(){
             },
             createModelPoint(e) {
                 e.preventDefault();
+                
                 const name = document.querySelector('#inputName'),
                     place = document.querySelector('#inputPlace'),
                     comment = document.querySelector('#controlComment'),
                     listComment = document.querySelector('#listComment');
                 
+
                 if(name.value && place.value && comment.value) {
-
-                    let li = document.createElement('li');
-                    listComment.firstChild === null ? listComment.append(li) : listComment.insertBefore(li, listComment.firstElementChild);
-                    li.innerHTML = `
-                    <span class="name">${name.value},</span>
-                    <span class="place">${place.value},</span>
-                    <div class="comment-text">${comment.value}</div>
-                    `;
-
                     placemarks.push ({
                         name: name.value,
                         place: place.value,
                         comment: comment.value,
-                        address: this.getData().properties? this.getData().properties.getAll().placemarkData.address : this.getData().address,
+                        address: this.getData().properties ? this.getData().properties.getAll().placemarkData.address : this.getData().address,
                         coords: this.getData().properties ? this.getData().properties.getAll().placemarkData.coords : this.getData().coords
                     });
+                    
+                    listComment.firstElementChild.firstElementChild.firstElementChild ? 
+                    listComment.firstElementChild.firstElementChild.innerHTML += commentHbs({name: name.value, place: place.value, comment: comment.value,})
+                        : listComment.firstElementChild.firstElementChild.innerHTML = commentHbs({name: name.value, place: place.value, comment: comment.value,});
+                    
                     let myPlacemark = this.addPointOnMap.call(this, placemarks[placemarks.length - 1]);
-                    // console.log(myPlacemark);
+
                     clusterer.add(myPlacemark);
                     myMap.geoObjects.add(clusterer);
                     name.value = place.value = comment.value = '';
                 }
 
             },
-            // createCommentList() {
-            //     const listComment = document.querySelector('#listComment');
-            //     // console.log('createCommentList', this.getData());
-            //     if (placemarks.length !== 0) {
-            //         for (let point in placemarks) {
-            //             if (placemarks[point].address === this.getData().properties.getAll().placemarkData.address) {
-            //                 console.log('Point',point);
-            //             }
-            //         }
-            //     }
-                
-            // },
             addPointOnMap(placemark) {
                 return new ymaps.Placemark(placemark.coords, {
                     placemarkData: placemark
                 }, { 
                     balloonLayout: BalloonLayout,
                     balloonContentLayout: BalloonContentLayout,
-                    balloonPanelMaxMapArea: 0 
+                    balloonPanelMaxMapArea: 0,
+                    visible: true
                 });
-            }
-            
+            },
         }
     ),
     BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
@@ -159,8 +131,67 @@ function init(){
                 <div class="comment-text">{{properties.placemarkData.comment}}</div>
             </li>
         {% endif %}
-        {% if content %}
-            {{content|raw}}
+        {% if comment %}
+            {{comment | raw}}
         {% endif %}`
-    ) 
+    ),
+    customItemContentLayout = ymaps.templateLayoutFactory.createClass(
+        `<div class="cluster-balloon">
+            <h2 class="cluster-balloon-header">{{properties.placemarkData.place}}</h2>
+            <a href="#" id="address">{{properties.placemarkData.address}}</a>
+            <div class="cluster-balloon-body">{{properties.placemarkData.comment}}</div>
+            <div class="cluster-balloon-footer">{{properties.placemarkData.date}}</div>
+        </div>`,
+        {
+            build(){
+                this.constructor.superclass.build.call(this);
+                let address = document.querySelector('#address');
+                address.addEventListener('click', this.clickOnAddress.bind(this));
+            },
+            clear(){
+                // let link = document.querySelector('#addressLink');
+                // link.removeEventListener('click', this.onLinkClick);
+                this.constructor.superclass.clear.call(this);
+            },
+            clickOnAddress(e){
+                e.preventDefault();
+                let coords = this.getData().properties.getAll().placemarkData.coords,
+                    address = this.getData().properties.getAll().placemarkData.address,
+                    foundPlacemarks = [];
+                    for (let point in placemarks) {
+                        if (placemarks[point].address === this.getData().properties.getAll().placemarkData.address) {
+                            foundPlacemarks.push(placemarks[point]); 
+                        }
+                    }
+                    
+                myMap.balloon.open(coords,{
+                    coords,
+                    address,
+                    comment: this.render(foundPlacemarks)
+                    
+                },{
+                    layout: BalloonLayout,
+                    contentLayout: BalloonContentLayout
+                });
+                this.events.fire('userclose');
+            },
+            render(foundPlacemarks) {
+                let span = document.createElement('span')
+                for(let comment of foundPlacemarks) {
+                    span.innerHTML += commentHbs({name: comment.name, place: comment.place, comment: comment.comment});
+                }  
+                return span.innerHTML;
+            }
+        }
+    );
+    let clusterer = new ymaps.Clusterer({
+        gridSize: 64,
+        clusterDisableClickZoom: true,
+        clusterHideIconOnBalloonOpen: true,
+        clusterBalloonContentLayout: "cluster#balloonCarousel",
+        clusterBalloonCycling: false,
+        clusterOpenBalloonOnClick: true,
+        clusterBalloonPanelMaxMapArea: 0,
+        clusterBalloonItemContentLayout: customItemContentLayout,
+    });
 }
