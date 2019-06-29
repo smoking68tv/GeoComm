@@ -15,7 +15,7 @@ function init(){
             myMap.balloon.open(coords,{
                 coords,                    
                 address,                   
-                comment: 'Отзывов нет'
+                comment: 'Отзывов пока нет...'
             },{
                 layout: BalloonLayout,              
                 contentLayout: BalloonContentLayout 
@@ -97,19 +97,22 @@ function init(){
                     placemarks.push ({
                         name: name.value,
                         place: place.value,
+                        date: this.createDate(new Date()),
                         comment: comment.value,
                         address: this.getData().properties ? this.getData().properties.getAll().placemarkData.address : this.getData().address,
                         coords: this.getData().properties ? this.getData().properties.getAll().placemarkData.coords : this.getData().coords
                     });
                     
                     listComment.firstElementChild.firstElementChild.firstElementChild ? 
-                    listComment.firstElementChild.firstElementChild.innerHTML += commentHbs({name: name.value, place: place.value, comment: comment.value,})
-                        : listComment.firstElementChild.firstElementChild.innerHTML = commentHbs({name: name.value, place: place.value, comment: comment.value,});
+                    listComment.firstElementChild.firstElementChild.innerHTML += commentHbs({name: name.value, place: place.value, comment: comment.value, date: this.createDate(new Date())})
+                        : listComment.firstElementChild.firstElementChild.innerHTML = commentHbs({name: name.value, place: place.value, comment: comment.value, date: this.createDate(new Date())});
                     
                     let myPlacemark = this.addPointOnMap.call(this, placemarks[placemarks.length - 1]);
 
                     clusterer.add(myPlacemark);
                     myMap.geoObjects.add(clusterer);
+                    
+                    listComment.scrollTop = listComment.scrollHeight;
                     name.value = place.value = comment.value = '';
                 }
 
@@ -124,13 +127,18 @@ function init(){
                     visible: true
                 });
             },
+            createDate(date){
+                return  `${date.getDate() < 10 ? `0${date.getData()}` : date.getDate()}.${date.getMonth() + 1 < 10 ? `0${date.getMonth() + 1}` : date.getMonth() + 1}.${date.getFullYear()} 
+                ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`;
+            }
         }
     ),
     BalloonContentLayout = ymaps.templateLayoutFactory.createClass(
         `{% if properties.placemarkData %}
             <li class="comment-item">
-                <span class="name">{{properties.placemarkData.name}},</span>
-                <span class="place">{{properties.placemarkData.place}},</span>
+                <span class="name">{{properties.placemarkData.name}}</span>
+                <span class="place">{{properties.placemarkData.place}}</span>
+                <span class="date">{{properties.placemarkData.date}}</span>
                 <div class="comment-text">{{properties.placemarkData.comment}}</div>
             </li>
         {% endif %}
@@ -154,9 +162,9 @@ function init(){
                 address.addEventListener('click', this.clickOnAddress.bind(this));
             },
             clear(){
-                let link = document.querySelector('#addressLink');
+                let link = document.querySelector('#address');
 
-                link.removeEventListener('click', this.onLinkClick);
+                link.removeEventListener('click', this.clickOnAddress);
 
                 this.constructor.superclass.clear.call(this);
             },
@@ -187,7 +195,7 @@ function init(){
                 let span = document.createElement('span');
 
                 for(let comment of foundPlacemarks) {
-                    span.innerHTML += commentHbs({name: comment.name, place: comment.place, comment: comment.comment});
+                    span.innerHTML += commentHbs({name: comment.name, place: comment.place, comment: comment.comment, date: comment.date});
                 }  
                 return span.innerHTML;
             }
