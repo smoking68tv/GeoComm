@@ -23,7 +23,7 @@ function init(){
         });
     });
 
-    let placemarks = []; 
+    let placemarks = []; // Все маркеры на карте
     
     let BalloonLayout = ymaps.templateLayoutFactory.createClass(
         `<div id="pop-up" class="card container">
@@ -102,7 +102,7 @@ function init(){
                         address: this.getData().properties ? this.getData().properties.getAll().placemarkData.address : this.getData().address,
                         coords: this.getData().properties ? this.getData().properties.getAll().placemarkData.coords : this.getData().coords
                     });
-                    
+                    // Добавление отзыва в список
                     listComment.firstElementChild.firstElementChild.firstElementChild ? 
                     listComment.firstElementChild.firstElementChild.innerHTML += commentHbs({name: name.value, place: place.value, comment: comment.value, date: this.createDate(new Date())})
                         : listComment.firstElementChild.firstElementChild.innerHTML = commentHbs({name: name.value, place: place.value, comment: comment.value, date: this.createDate(new Date())});
@@ -111,7 +111,7 @@ function init(){
 
                     clusterer.add(myPlacemark);
                     myMap.geoObjects.add(clusterer);
-                    
+
                     listComment.scrollTop = listComment.scrollHeight;
                     name.value = place.value = comment.value = '';
                 }
@@ -173,7 +173,7 @@ function init(){
                 let coords = this.getData().properties.getAll().placemarkData.coords,
                     address = this.getData().properties.getAll().placemarkData.address,
                     foundPlacemarks = [];
-
+                // поиск всех точек соответствующих адресу
                 for (let point in placemarks) {
                     if (placemarks[point].address === this.getData().properties.getAll().placemarkData.address) {
                         foundPlacemarks.push(placemarks[point]); 
@@ -183,14 +183,15 @@ function init(){
                 myMap.balloon.open(coords,{
                     coords,
                     address,
-                    comment: this.render(foundPlacemarks)
-                    
+                    comment: this.render(foundPlacemarks)      
                 },{
                     layout: BalloonLayout,
                     contentLayout: BalloonContentLayout
                 });
+
                 this.events.fire('userclose');
             },
+            // Добавление найденных точек в список
             render(foundPlacemarks) {
                 let span = document.createElement('span');
 
