@@ -1,4 +1,4 @@
-commentHbs = require('../hbs/comment.hbs');
+const commentHbs = require('../hbs/comment.hbs');
 ymaps.ready(init);
 
 function init(){
@@ -20,24 +20,23 @@ function init(){
                 layout: BalloonLayout,              
                 contentLayout: BalloonContentLayout 
             });
-            console.log(myMap.balloon.getOptions())
         });
     });
 
     let placemarks = []; 
     
     let BalloonLayout = ymaps.templateLayoutFactory.createClass(
-        `<div id="pop-up" class="card container" style="width: 379px; max-height: 527px">
-            <div class="card-header row">
-                <h5 class="card-title col-11">
+        `<div id="pop-up" class="card container">
+            <div class="card-header row align-center">
+                <h3 class="card-title col-11">
                     {{properties.placemarkData.address|default: address}}
-                </h5>
+                </h3>
                 <button id="closeButton" type="button" class="close col-1" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+                    <span aria-hidden="true" class=" text-center">&times;</span>
                 </button>
             </div>
             <div class="card-body">
-                <ul id="listComment" style="max-height: 100px; overflow: auto;">
+                <ul id="listComment">
                     {% include options.contentLayout %}
                 </ul>
                 <hr class="divider"></hr>
@@ -53,7 +52,9 @@ function init(){
                         <div class="form-group">
                             <textarea class="form-control" id="controlComment" rows="3" placeholder="Поделитесь впечатлениями"></textarea>
                         </div>
-                        <input id="addButton" type="submit" class="btn float-right" value="Добавить">
+                        <div class="form-group">
+                            <input id="addButton" type="submit" class="btn float-right" value="Добавить">
+                        </div>
                     </form>
                 </div>
             </div>
@@ -68,12 +69,14 @@ function init(){
                 addButton.addEventListener('click', this.createModelPoint.bind(this));
                 closeButton.addEventListener('click',this.closeBalloon.bind(this));
             },
-            clear(){
+            clear(){          
+                let closeButton = document.querySelector('#closeButton'),
+                addButton = document.querySelector('#addButton');
+
+                addButton.removeEventListener('click', this.createModelPoint);
+                closeButton.removeEventListener('click', this.closeBalloon);
+
                 this.constructor.superclass.clear.call(this);
-                // let closeButton = document.querySelector('#closeButton'),
-                // addButton = document.querySelector('#addButton');
-                // addButton.removeEventListener('click', this.createModelPoint);
-                // closeButton.removeEventListener('click', this.closeBalloon);
             },
             closeBalloon(e) {
                 this.events.fire('userclose');
@@ -145,12 +148,16 @@ function init(){
         {
             build(){
                 this.constructor.superclass.build.call(this);
+
                 let address = document.querySelector('#address');
+
                 address.addEventListener('click', this.clickOnAddress.bind(this));
             },
             clear(){
-                // let link = document.querySelector('#addressLink');
-                // link.removeEventListener('click', this.onLinkClick);
+                let link = document.querySelector('#addressLink');
+
+                link.removeEventListener('click', this.onLinkClick);
+
                 this.constructor.superclass.clear.call(this);
             },
             clickOnAddress(e){
@@ -158,11 +165,12 @@ function init(){
                 let coords = this.getData().properties.getAll().placemarkData.coords,
                     address = this.getData().properties.getAll().placemarkData.address,
                     foundPlacemarks = [];
-                    for (let point in placemarks) {
-                        if (placemarks[point].address === this.getData().properties.getAll().placemarkData.address) {
-                            foundPlacemarks.push(placemarks[point]); 
-                        }
+
+                for (let point in placemarks) {
+                    if (placemarks[point].address === this.getData().properties.getAll().placemarkData.address) {
+                        foundPlacemarks.push(placemarks[point]); 
                     }
+                }
                     
                 myMap.balloon.open(coords,{
                     coords,
@@ -176,7 +184,8 @@ function init(){
                 this.events.fire('userclose');
             },
             render(foundPlacemarks) {
-                let span = document.createElement('span')
+                let span = document.createElement('span');
+
                 for(let comment of foundPlacemarks) {
                     span.innerHTML += commentHbs({name: comment.name, place: comment.place, comment: comment.comment});
                 }  
